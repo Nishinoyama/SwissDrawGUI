@@ -5,94 +5,49 @@ std::string s3dStringToStdString(String str) {
     return str.toUTF8();
 }
 
-class ScenesManager {
-    enum SceneEnum
-    {
-        InitialScene,
-        SetupScene,
-        CSVSetupScene,
-        MainScene,
-        ProcessingScene,
-        NameRateInputScene,
-        MatchingProcessScene,
-        LoadScene,
-        WithdrewScene,
-        EndScene
-    };
 
-    SceneEnum nowScene;
-    SwissSystemTournament sst;
-    Font normalFont;
-    Font cautionFont;
+struct SceneState
+{
+};
+
+
+struct SwissData 
+{
+    /*
+
+    SwissScene* nowScene;
 
     TextEditState contestNameTextEditState;
     TextEditState playerAmountTextEditState;
     TextEditState roundAmoundTextEditState;
 
-    String errStatus;
+    */
 
+    SwissSystemTournament sst;
+    String errStatus;
     String contestName;
     int playerNumber;
     int roundNumber;
     int processStep;
 
+    /*
 public:
-
-    ScenesManager() : normalFont(18), cautionFont(18,Typeface::Bold),nowScene(InitialScene)
+ 
+    SwissSceneManager() : normalFont(18), cautionFont(18,Typeface::Bold),nowScene(InitialScene)
     {
+        
     }
 
     void draw() 
     {
         ClearPrint();
+        nowScene->Draw();
         Print << errStatus;
         switch ( nowScene )
         {
         case InitialScene:
-            if (SimpleGUI::Button(U"新規作成", Vec2(120, 480), 220 ))
-            {
-                sceneChange(SetupScene);
-            }
-            if (SimpleGUI::Button(U"名簿CSVから作成", Vec2(120, 420), 220))
-            {
-                sceneChange(CSVSetupScene);
-            }
-            if (SimpleGUI::Button(U"続きをロード", Vec2(460, 480), 220 ))
-            {
-                sceneChange(LoadScene);
-            }
-            break;
+            
         case SetupScene:
-            normalFont(U"コンテスト名（フォルダの名前になります）").draw(60, 60, Palette::Black);
-            SimpleGUI::TextBox(contestNameTextEditState, Vec2(48, 84), 240);
-            normalFont(U"参加人数（2～99999人）").draw(60, 156, Palette::Black);
-            SimpleGUI::TextBox(playerAmountTextEditState, Vec2(48, 180), 120, 5);
-            if (SimpleGUI::Button(U"キャンセル", Vec2(120, 480), 180)){
-                sceneChange(InitialScene);
-            }
-            if (SimpleGUI::Button(U"新規データを作成", Vec2(440, 480), 280)) {
-                try {
-                    contestName = contestNameTextEditState.text;
-                    playerNumber = ParseOr<int32>(playerAmountTextEditState.text, -199999);
-                    if (contestName.empty()) {
-                        throw Error(U"コンテスト名が空です");
-                    }
-                    if (playerNumber == -199999) {
-                        throw Error(U"参加人数は半角数値を入力してください");
-                    }
-                    if (playerNumber <= 2) {
-                        throw Error(U"参加人数は2人以上にしてください");
-                    }
-                    sst = SwissSystemTournament(playerNumber, 0, s3dStringToStdString(contestName));
-                    sst.build();
-                    sst.MakeJSONData();
-                    roundNumber = 0;
-                    sceneChange(NameRateInputScene);
-                }
-                catch (const Error& e) {
-                    errStatus = e.what();
-                }
-            }
             break;
         case CSVSetupScene:
             normalFont(U"名簿CSVから作成：名簿CSVファイルを{コンテスト名}/list.csvに配置して下さい").draw(40, 20, Palette::Black);
@@ -278,24 +233,123 @@ public:
         }
     }
 
-    void sceneChange(SceneEnum s) {
+    void sceneChange(SwissScene* s) {
         errStatus = U"";
         nowScene = s;
         processStep = 0;
     }
 
+  */
+};
+using App = SceneManager<String, SwissData>;
+enum class SceneEnum
+{
+    InitialScene,
+    SetupScene,
+    CSVSetupScene,
+    MainScene,
+    ProcessingScene,
+    NameRateInputScene,
+    MatchingProcessScene,
+    LoadScene,
+    WithdrewScene,
+    EndScene
 };
 
+class SwissScene : public App::Scene {
+public:
+    SwissScene(const InitData& init) : IScene(init) {};
+    void update() override {};
+    void draw() const override {
+        ClearPrint();
+        Print << getData().errStatus;
+    };
+protected:
+    bool changeScene(const State_t& state, const Duration& transitionTime = MillisecondsF(  0), bool crossFade = false) {
+        getData().errStatus = U"";
+        return IScene::changeScene(state, transitionTime, crossFade);
+    }
+};
+
+class InitialScene : public SwissScene {
+public:
+    InitialScene(const InitData& init) : SwissScene(init) {};
+    void update() override {
+        if (SimpleGUI::Button(U"新規作成", Vec2(120, 480), 220))
+        {
+            changeScene(U"Setup");
+        }
+        if (SimpleGUI::Button(U"名簿CSVから作成", Vec2(120, 420), 220))
+        {
+            // sceneChange(CSVSetupScene);
+        }
+        if (SimpleGUI::Button(U"続きをロード", Vec2(460, 480), 220))
+        {
+            // sceneChange(LoadScene);
+        }
+    }
+};
+
+class SetupScene : public SwissScene {
+private:
+    TextEditState contestNameTextEditState;
+    TextEditState playerAmountTextEditState;
+    TextEditState roundAmoundTextEditState;
+public:
+    SetupScene(const InitData& init) : SwissScene(init) {};
+    void update() override {
+        FontAsset(U"NormalFont")(U"コンテスト名（フォルダの名前になります）").draw(60, 60, Palette::Black);
+        SimpleGUI::TextBox(contestNameTextEditState, Vec2(48, 84), 240);
+        FontAsset(U"NormalFont")(U"参加人数（2～99999人）").draw(60, 156, Palette::Black);
+        SimpleGUI::TextBox(playerAmountTextEditState, Vec2(48, 180), 120, 5);
+        if (SimpleGUI::Button(U"キャンセル", Vec2(120, 480), 180)) {
+            changeScene(U"Initial");
+        }
+        if (SimpleGUI::Button(U"新規データを作成", Vec2(440, 480), 280)) {
+            try {
+                const String contestName = contestNameTextEditState.text;
+                const int playerNumber = ParseOr<int32>(playerAmountTextEditState.text, -199999);
+                if (contestName.empty()) {
+                    throw Error(U"コンテスト名が空です");
+                }
+                if (playerNumber == -199999) {
+                    throw Error(U"参加人数は半角数値を入力してください");
+                }
+                if (playerNumber <= 2) {
+                    throw Error(U"参加人数は3人以上にしてください");
+                }
+                getData().contestName = contestName;
+                getData().playerNumber = playerNumber;
+                getData().sst = SwissSystemTournament(playerNumber, 0, s3dStringToStdString(contestName));
+                getData().sst.build();
+                getData().sst.MakeJSONData();
+                getData().roundNumber = 0;
+                changeScene(U"NameRateInput");
+            }
+            catch (const Error& e) {
+                getData().errStatus = e.what();
+            }
+        }
+    }
+};
 
 void Main()
 {
+    FontAsset::Register(U"NormalFont", 18);
+    FontAsset::Register(U"CautionFont", 18, Typeface::Bold);
     Scene::SetBackground(ColorF(0.8, 0.9, 0.7));
     Window::SetTitle(U"スイス式トーナメント・マッチングアプリ");
 
-    ScenesManager sm;
+    App manager;
+    manager
+        .add<InitialScene>(U"Initial")
+        .add<SetupScene>(U"Setup")
+        ;
 
     while (System::Update())
     {
-        sm.draw();
+        if (!manager.update()) {
+            break;
+        }
     }
 }
